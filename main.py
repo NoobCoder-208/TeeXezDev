@@ -200,7 +200,8 @@ class Bot:
                     "[FFFFFF][00FFFF]/help [FFFFFF]\u279c Xem danh s\xe1\xbb\x93ch l\u1ec7nh\n"
                     "[FFFFFF][00FFFF]/like [FFA500]<uid>[FFFFFF] \u279c T\u0103ng likes cho ng\u01b0\u1eddi ch\u01a1i\n"
                     "[FFFFFF][00FFFF]/5 [FFA500]<uid>[FFFFFF] \u279c M\u1edf team 5 ng\u01b0\u1eddi\n"
-                    "[FFFFFF][00FFFF]/6 [FFA500]<uid>[FFFFFF] \u279c M\u1edf team 6 ng\u01b0\u1eddi\n\n"
+                    "[FFFFFF][00FFFF]/6 [FFA500]<uid>[FFFFFF] \u279c M\u1edf team 6 ng\u01b0\u1eddi\n"
+                    "[FFFFFF][00FFFF]/js [FFA500]<teamcode>[FFFFFF] \u279c V\xe0o team b\u1eb1ng code\n\n"
                     "[AAAAAA]--- TeeXez ---"
                 )
                 return
@@ -223,6 +224,22 @@ class Bot:
                     self._reply(msg.cid, msg.tp, "[B][c][FF0000]/%s <uid>" % text[1])
                     return
                 threading.Thread(target=self._gen_squads, args=(int(text[1]), msg.cid, parts[1], msg.tp), daemon=True).start()
+                return
+            if text.startswith("/js"):
+                parts = text.split()
+                if len(parts) < 2 or not parts[1].isdigit():
+                    self._reply(msg.cid, msg.tp, "[B][c][FF0000]/js <teamcode>")
+                    return
+                self._reply(msg.cid, msg.tp, "[B][c][FFFF00]\u0110ang v\xe0o team %s..." % parts[1])
+                try:
+                    if self.sock_chat and self._gen:
+                        self.sock_chat.sendall(self._gen.leave_channel(msg.cid))
+                        time.sleep(0.3)
+                    if self.sock_online and self._gen:
+                        self.sock_online.sendall(self._gen.join_squad(int(parts[1])))
+                    self._reply(msg.cid, msg.tp, "[B][c][00FF00]\u0110\xe3 v\xe0o team %s!" % parts[1])
+                except Exception as e:
+                    self._reply(msg.cid, msg.tp, "[B][c][FF0000]L%E1%BB%97i: %s" % str(e)[:50])
                 return
         except Exception as e:
             log.warning("Chat handler: %s | msg: %s", e, msg.message[:50] if msg.message else "")

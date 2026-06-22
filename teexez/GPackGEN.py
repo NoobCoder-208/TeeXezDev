@@ -61,6 +61,13 @@ class GPackGEN:
         fields[2] = entry
         return self._build(list(fields.items()))
 
+    def leave_channel(self, cid):
+        fields = {}
+        fields[0] = 18
+        fields[1] = 4
+        fields[2] = {1: int(cid), 3: self.account_region.lower()}
+        return self._build(list(fields.items()))
+
     def open_squad(self, tc):
         fields = {}
         fields[0] = 5
