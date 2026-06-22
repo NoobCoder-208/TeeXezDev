@@ -1,5 +1,5 @@
 import json, socket, threading, time, logging, sys, requests
-from teexez.ReQAPI import FreeFireAPI, protobuf_dec
+from teexez.ReQAPI import FreeFireAPI, protobuf_dec, ProtoBuf
 from teexez.GPackGEN import GPackGEN
 
 logging.basicConfig(
@@ -82,6 +82,8 @@ class Bot:
         self.sock_chat = self.sock_online = None
         self.running = threading.Event()
         self._gen = None
+        self.insquad = None
+        self.joining_team = False
 
     def cleanup(self):
         self.running.clear()
@@ -168,11 +170,20 @@ class Bot:
                 sock.sendall(self.packet_auth)
                 self.sock_online = sock
                 log.info("Online connected")
+                last_reset = time.time()
                 while self.running.is_set():
                     try:
                         data = sock.recv(4096)
                         if not data:
                             break
+                        if data.hex()[:4] == "0500":
+                            self._process_0500_packet(data)
+                        now = time.time()
+                        if now - last_reset > 5:
+                            if self.insquad is not None:
+                                self.insquad = None
+                                self.joining_team = False
+                            last_reset = now
                     except socket.timeout:
                         continue
             except Exception as e:
@@ -237,6 +248,7 @@ class Bot:
                         time.sleep(0.3)
                     if self.sock_online and self._gen:
                         self.sock_online.sendall(self._gen.join_squad(int(parts[1])))
+                    self.insquad = True
                     self._reply(msg.cid, msg.tp, "[B][c][00FF00]\u0110\xe3 v\xe0o team %s!" % parts[1])
                 except Exception as e:
                     self._reply(msg.cid, msg.tp, "[B][c][FF0000]L%E1%BB%97i: %s" % str(e)[:50])
@@ -273,6 +285,33 @@ class Bot:
             log.info("Closed squad %d for %s", team, uid)
         except Exception as e:
             log.warning("Squad error: %s", e)
+
+    def _process_0500_packet(self, data):
+        if self.insquad is not None or self.joining_team or not self._gen:
+            return
+        try:
+            raw = bytes.fromhex(data.hex()[10:])
+            parsed = ProtoBuf(raw).protobuf()
+            invite = parsed.get("5")
+            if not isinstance(invite, dict):
+                return
+            squad_owner = invite.get("1")
+            code = invite.get("8")
+            if not squad_owner or not code:
+                return
+            squad_owner = int(squad_owner)
+            code = str(code)
+            self.joining_team = True
+            self.sock_online.sendall(self._gen.request_join_squad(squad_owner))
+            time.sleep(0.3)
+            self.sock_online.sendall(self._gen.join_squad_recruit(squad_owner, code))
+            time.sleep(1.5)
+            self.insquad = True
+            log.info("Auto-accepted invite from %s", squad_owner)
+        except:
+            pass
+        finally:
+            self.joining_team = False
 
 def main():
     uid, token = read_config()

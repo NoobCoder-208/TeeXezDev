@@ -114,6 +114,33 @@ class GPackGEN:
         fields[2] = {1: self.account_id, 2: 0x362E3D41, 5: [{1: id, 3: eid} for id in ids]}
         return self._build(list(fields.items()))
 
+    def request_join_squad(self, uid):
+        fields = {}
+        fields[0] = 5
+        fields[1] = 33
+        badge = random.choice([1048576, 32768, 2048, 64, 4094, 11233, 262144])
+        fields[2] = {
+            1: int(uid), 2: self.account_region, 3: 1, 4: 1,
+            6: self.account_name, 7: 330, 8: 1000, 9: 100,
+            10: self.account_region[:2], 12: 1, 13: int(uid),
+            16: 1, 17: {2: 159, 4: "y[WW", 6: 11, 8: self.client_version, 9: 3, 10: 1},
+            18: 306, 19: 18, 24: 902000306, 26: {},
+            27: {1: 11, 2: 12999994075, 3: 999},
+            28: {}, 31: {1: 1, 2: badge}, 32: badge
+        }
+        return self._build(list(fields.items()))
+
+    def join_squad_recruit(self, uid, code):
+        fields = {}
+        fields[0] = 5
+        fields[1] = 4
+        fields[2] = {
+            1: int(uid), 3: int(uid), 8: 1,
+            9: {2: 161, 4: "y[WW", 6: 11, 8: self.client_version, 9: 3, 10: 1},
+            10: str(code)
+        }
+        return self._build(list(fields.items()))
+
     def play_animation(self, aid):
         fields = {}
         fields[0] = 5
