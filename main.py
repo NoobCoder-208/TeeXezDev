@@ -212,7 +212,8 @@ class Bot:
                     "[FFFFFF][00FFFF]/like [FFA500]<uid>[FFFFFF] \u279c T\u0103ng likes cho ng\u01b0\u1eddi ch\u01a1i\n"
                     "[FFFFFF][00FFFF]/5 [FFA500]<uid>[FFFFFF] \u279c M\u1edf team 5 ng\u01b0\u1eddi\n"
                     "[FFFFFF][00FFFF]/6 [FFA500]<uid>[FFFFFF] \u279c M\u1edf team 6 ng\u01b0\u1eddi\n"
-                    "[FFFFFF][00FFFF]/js [FFA500]<teamcode>[FFFFFF] \u279c V\xe0o team b\u1eb1ng code\n\n"
+                    "[FFFFFF][00FFFF]/js [FFA500]<teamcode>[FFFFFF] \u279c V\xe0o team b\u1eb1ng code\n"
+                    "[FFFFFF][00FFFF]/cut [FFFFFF]\u279c Tho\xe1t team\n\n"
                     "[AAAAAA]--- TeeXez ---"
                 )
                 return
@@ -250,6 +251,18 @@ class Bot:
                         self.sock_online.sendall(self._gen.join_squad(int(parts[1])))
                     self.insquad = True
                     self._reply(msg.cid, msg.tp, "[B][c][00FF00]\u0110\xe3 v\xe0o team %s!" % parts[1])
+                except Exception as e:
+                    self._reply(msg.cid, msg.tp, "[B][c][FF0000]L%E1%BB%97i: %s" % str(e)[:50])
+                return
+            if text in ("/cut", "/leave"):
+                try:
+                    if self.sock_chat and self._gen:
+                        self.sock_chat.sendall(self._gen.leave_channel(msg.cid))
+                    if self.sock_online and self._gen:
+                        self.sock_online.sendall(self._gen.leave_squad(0))
+                    self.insquad = None
+                    self.joining_team = False
+                    self._reply(msg.cid, msg.tp, "[B][c][00FF00]\u0110\xe3 tho\xe1t team!")
                 except Exception as e:
                     self._reply(msg.cid, msg.tp, "[B][c][FF0000]L%E1%BB%97i: %s" % str(e)[:50])
                 return
