@@ -1,6 +1,8 @@
-# TeeXezDevTCP
+# TeeXezDevTCP - FreeFire TCP Bot
 
-FreeFire TCP Bot — chat + squad + actions over TCP socket.
+## Overview
+
+FreeFire TCP Bot for chat + squad + actions over TCP socket.
 
 ## Project Structure
 
@@ -27,26 +29,25 @@ FreeFire TCP Bot — chat + squad + actions over TCP socket.
 - `pycryptodome` — AES-CBC128 encryption
 - `requests` — HTTP API calls
 
-## Critical Rules
+## Files
 
-### No Unauthorized Commits
-- NEVER commit without explicit permission.
-- Wait for user to say "commit" or "ok commit".
-- Only stage files after user confirms.
+- **`main.py`**: Complete bot implementation with all chat and squad functionality
+- **`api.md`**: Like API documentation
+- **`teexez/ReQAPI.py`**: Garena authentication and packet encoding/decoding
+- **`teexez/GPackGEN.py`**: Game packet builder for chat commands, squad actions, and animations
 
-### Surgical Changes
-- Touch only what's asked. No adjacent "improvements".
-- No AntiDisconnect, locks, shutdown cleanup, or auth sleep changes unless explicitly requested.
-- No speculative optimizations.
+## Running
 
-### Squad Chat Implementation Reference
+This is a daemon bot that requires:
+- A `bot.txt` configuration file with UID/token
+- Network connectivity to FreeFire servers
+- TCP access to ports 39801 (chat) and 39699 (online)
+
+The bot runs continuously with auto-reconnect and periodic re-authentication.
+
+## Squad Chat Implementation Reference
+
 - `_process_0500_packet` — auto-accept invite + collect UIDs + join channels
 - `join_channel(uid, code, None)` on chat socket for squad members
 - Invite: code from parsed["5"]["8"]
 - Player join: code from parsed["5"]["17"]
-
-## Verify Before Reporting Done
-
-- Syntax: `python3 -c "import py_compile; py_compile.compile('main.py', doraise=True)"`
-- No log spam, no reconnect loops
-- User tests and confirms before commit
