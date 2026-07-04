@@ -114,6 +114,7 @@ class Bot:
         self.joining_team = False
         self.ids = []
         self._stop_all = False
+        self.reconnect_lock = threading.Lock()
         self.Emotes = {
             'E1': 909050020, 'E2': 909050009, 'G18': 909038012, 'CGK': 909042008,
             'AK47': 909000063, 'MP40': 909000075, 'MP40V2': 909040010,
@@ -165,8 +166,8 @@ class Bot:
 
                 if not self.running.is_set():
                     break
-                log.info("Reconnecting auth in 30s...")
-                time.sleep(30)
+                log.info("Reconnecting auth in 3600s...")
+                time.sleep(3600)
             except Exception as e:
                 log.error("run(): %s", e)
                 if self.running.is_set():
@@ -174,68 +175,69 @@ class Bot:
 
     def _conn_chat(self):
         while self.running.is_set():
-            try:
-                sock = socket.create_connection((self.chat_ip, int(self.chat_port)), timeout=15)
-                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-                sock.sendall(self.packet_auth)
-                if self.guild_id and self.guild_code:
-                    sock.sendall(self._gen.join_channel(self.guild_id, self.guild_code, 1))
-                sock.sendall(self._gen.join_channel(None, None, 5))
-                self.sock_chat = sock
-                log.info("Chat connected")
-                sock.settimeout(120)
-                while self.running.is_set():
-                    try:
-                        data = sock.recv(3300)
-                        if not data:
-                            break
-                        if data.hex()[:4] == "1200" and len(data) > 50:
-                            self._handle_chat(data)
-                    except socket.timeout:
-                        continue
-            except Exception as e:
-                log.warning("Chat error: %s", e)
-            finally:
-                try: sock.close()
-                except: pass
-                self.sock_chat = None
-                if self.running.is_set():
-                    time.sleep(5)
+            with self.reconnect_lock:
+                try:
+                    sock = socket.create_connection((self.chat_ip, int(self.chat_port)), timeout=15)
+                    sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+                    sock.sendall(self.packet_auth)
+                    if self.guild_id and self.guild_code:
+                        sock.sendall(self._gen.join_channel(self.guild_id, self.guild_code, 1))
+                    sock.sendall(self._gen.join_channel(None, None, 5))
+                    self.sock_chat = sock
+                    log.info("Chat connected")
+                    while self.running.is_set():
+                        try:
+                            data = sock.recv(3300)
+                            if not data:
+                                break
+                            if data.hex()[:4] == "1200" and len(data) > 50:
+                                self._handle_chat(data)
+                        except socket.timeout:
+                            continue
+                except Exception as e:
+                    log.warning("Chat error: %s", e)
+                finally:
+                    try: sock.close()
+                    except: pass
+                    self.sock_chat = None
+                    if self.running.is_set():
+                        time.sleep(5)
 
     def _conn_online(self):
         while self.running.is_set():
-            try:
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-                sock.settimeout(30)
-                sock.connect((self.online_ip, int(self.online_port)))
-                sock.sendall(self.packet_auth)
-                self.sock_online = sock
-                log.info("Online connected")
-                last_reset = time.time()
-                while self.running.is_set():
-                    try:
-                        data = sock.recv(4096)
-                        if not data:
-                            break
-                        if data.hex()[:4] == "0500":
-                            self._process_0500_packet(data)
-                        now = time.time()
-                        if now - last_reset > 5:
-                            if self.insquad is not None:
-                                self.insquad = None
-                                self.joining_team = False
-                            last_reset = now
-                    except socket.timeout:
-                        continue
-            except Exception as e:
-                log.warning("Online error: %s", e)
-            finally:
-                try: sock.close()
-                except: pass
-                self.sock_online = None
-                if self.running.is_set():
-                    time.sleep(3)
+            with self.reconnect_lock:
+                try:
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+                    sock.settimeout(300)
+                    sock.connect((self.online_ip, int(self.online_port)))
+                    sock.sendall(self.packet_auth)
+                    self.sock_online = sock
+                    log.info("Online connected")
+                    last_reset = time.time()
+                    while self.running.is_set():
+                        try:
+                            data = sock.recv(4096)
+                            if not data:
+                                break
+                            if data.hex()[:4] == "0500":
+                                self._process_0500_packet(data)
+                            now = time.time()
+                            if now - last_reset > 5:
+                                if self.insquad is not None:
+                                    self.insquad = None
+                                    self.joining_team = False
+                                last_reset = now
+                        except socket.timeout:
+                            continue
+                except Exception as e:
+                    log.warning("Online error: %s", e)
+                finally:
+                    try: sock.close()
+                    except: pass
+                    self.sock_online = None
+                    if self.running.is_set():
+                        time.sleep(3)
 
     def _handle_chat(self, data):
         msg = datamsg(data)
